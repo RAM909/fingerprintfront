@@ -15,11 +15,14 @@ const timeslotMap = {
 
 const Attendance = () => {
     const [date, setDate] = useState('');
+    const [startDate, setStartDate] = useState(''); // Start date for defaulter calculation
+    const [endDate, setEndDate] = useState(''); // End date for defaulter calculation
     const [timeSlots, setTimeSlots] = useState(Object.keys(timeslotMap));
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [attendanceData, setAttendanceData] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [filteredAttendance, setFilteredAttendance] = useState([]);
+    const [defaulters, setDefaulters] = useState([]);
 
     const handleDateChange = (e) => {
         setDate(e.target.value);
@@ -46,6 +49,44 @@ const Attendance = () => {
         console.log(filtered);
         setFilteredAttendance(filtered.length > 0 ? filtered[0].rollnoofstudentpresent : []);
         setModalOpen(true);
+    };
+
+    const calculateDefaulters = () => {
+        if (!startDate || !endDate) {
+            alert("Please select both start and end dates.");
+            return;
+        }
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        // Filter attendance data for the selected date range
+        const filteredData = attendanceData.filter(att => {
+            const attendanceDate = new Date(att.date);
+            return attendanceDate >= start && attendanceDate <= end;
+        });
+
+        // Count the total number of sessions and attendance per student
+        const totalSessions = filteredData.length;
+        const attendanceCount = {};
+
+        filteredData.forEach(att => {
+            att.rollnoofstudentpresent.forEach(rollno => {
+                if (!attendanceCount[rollno]) {
+                    attendanceCount[rollno] = 0;
+                }
+                attendanceCount[rollno]++;
+            });
+        });
+
+        // Calculate attendance percentage and identify defaulters
+        const defaultersList = Object.keys(attendanceCount).filter(rollno => {
+            const attendancePercentage = (attendanceCount[rollno] / totalSessions) * 100;
+            return attendancePercentage < 75;
+        });
+
+        setDefaulters(defaultersList);
+        console.log("Defaulters:", defaultersList);
     };
 
     useEffect(() => {
@@ -94,6 +135,41 @@ const Attendance = () => {
                     </div>
                 </div>
             )}
+
+            {/* Defaulter Section */}
+            <div className="mt-10">
+                <h2 className="text-2xl font-semibold mb-4 text-center text-red-600">Defaulter Calculator</h2>
+                <div className="flex justify-center space-x-4 mb-4">
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                    <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                </div>
+                <div className="flex justify-center">
+                    <button onClick={calculateDefaulters} className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition duration-300">
+                        Calculate Defaulters
+                    </button>
+                </div>
+
+                {defaulters.length > 0 && (
+                    <div className="mt-6">
+                        <h3 className="text-xl font-semibold text-center text-red-700">Defaulters List</h3>
+                        <ul className="mt-4">
+                            {defaulters.map((rollno, index) => (
+                                <li key={index} className="text-center border-b text-black border-gray-300 py-2">{rollno}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
